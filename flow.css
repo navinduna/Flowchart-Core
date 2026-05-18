@@ -1,0 +1,382 @@
+ #canvas {
+     width: 5000px;
+     height: 5000px;
+     background-color: #f8fafc;
+     background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+     background-size: 20px 20px;
+     position: relative;
+     transform-origin: 0 0;
+ }
+
+ .node {
+     position: absolute;
+     width: 160px;
+     min-height: 60px;
+     padding: 14px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     text-align: center;
+     font-size: 13px;
+     font-weight: 600;
+     cursor: move;
+     user-select: none;
+     box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+     transition: border-color 0.15s, box-shadow 0.15s;
+     z-index: 10;
+     background-color: #ffffff;
+     touch-action: none;
+ }
+
+ .node span {
+     word-break: break-word;
+     width: 100%;
+     pointer-events: none;
+ }
+
+ .node:hover {
+     box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.15);
+ }
+
+ .node.selected {
+     outline: 3px solid #2563eb !important;
+     box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.25) !important;
+ }
+
+ .shape-terminal {
+     border: 2px solid #10b981;
+     background-color: #f0fdf4;
+     color: #14532d;
+     border-radius: 9999px;
+ }
+
+ .shape-process {
+     border: 2px solid #3b82f6;
+     background-color: #eff6ff;
+     color: #1e3a8a;
+     border-radius: 8px;
+ }
+
+ .shape-input {
+     border: 2px solid #ec4899;
+     background-color: #fdf2f8;
+     color: #4c0519;
+     transform: skewX(-14deg);
+ }
+
+ .shape-input span {
+     transform: skewX(14deg);
+ }
+
+ .shape-print {
+     border: 2px solid #a855f7;
+     background-color: #faf5ff;
+     color: #4c1d95;
+     transform: skewX(-14deg);
+ }
+
+ .shape-print span {
+     transform: skewX(14deg);
+ }
+
+ .shape-decision {
+     border: 2px solid #f59e0b;
+     background-color: #fffbeb;
+     color: #78350f;
+     width: 120px;
+     height: 120px;
+     transform: rotate(45deg);
+ }
+
+ .shape-decision span {
+     transform: rotate(-45deg);
+ }
+
+ .port {
+     position: absolute;
+     width: 12px;
+     height: 12px;
+     background-color: #64748b;
+     border: 2px solid #ffffff;
+     border-radius: 50%;
+     cursor: crosshair;
+     opacity: 0;
+     pointer-events: none;
+     transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
+     z-index: 30;
+     touch-action: none;
+ }
+
+ .node.selected .port,
+ .port:hover {
+     opacity: 1;
+     pointer-events: auto;
+ }
+
+ .port-top {
+     top: -6px;
+     left: calc(50% - 6px);
+ }
+
+ .port-bottom {
+     bottom: -6px;
+     left: calc(50% - 6px);
+ }
+
+ .port-left {
+     left: -6px;
+     top: calc(50% - 6px);
+ }
+
+ .port-right {
+     right: -6px;
+     top: calc(50% - 6px);
+ }
+
+ .shape-decision .port-top {
+     top: -6px;
+     left: -6px;
+ }
+
+ .shape-decision .port-bottom {
+     bottom: -6px;
+     right: -6px;
+     left: auto;
+ }
+
+ .shape-decision .port-left {
+     left: -6px;
+     bottom: -6px;
+     top: auto;
+ }
+
+ .shape-decision .port-right {
+     right: -6px;
+     top: -6px;
+ }
+
+ .flow-line {
+     fill: none;
+     stroke: #475569;
+     stroke-width: 3;
+     cursor: pointer;
+     transition: stroke 0.15s, stroke-width 0.15s;
+ }
+
+ .flow-line:hover {
+     stroke: #2563eb;
+     stroke-width: 4;
+ }
+
+ .flow-line.selected {
+     stroke: #dc2626;
+     stroke-width: 4;
+ }
+
+ .line-handle {
+     fill: #2563eb;
+     stroke: #ffffff;
+     stroke-width: 2px;
+     cursor: ns-resize;
+     z-index: 40;
+ }
+
+ .line-handle-horiz {
+     cursor: ew-resize;
+ }
+
+ .endpoint-handle {
+     fill: #3b82f6;
+     stroke: #ffffff;
+     stroke-width: 2px;
+     cursor: move;
+     z-index: 50;
+ }
+
+ html,
+ body {
+     overflow: hidden !important;
+     height: 100dvh !important;
+     position: fixed;
+     width: 100%;
+ }
+
+ #canvas-container {
+     flex: 1;
+     overflow: hidden !important;
+     position: relative;
+     touch-action: none;
+ }
+
+ body.dark-mode {
+     background-color: #0f172a !important;
+     color: #cbd5e1 !important;
+ }
+
+ body.dark-mode header,
+ body.dark-mode aside,
+ body.dark-mode #editor {
+     background-color: #1e293b !important;
+     border-color: #334155 !important;
+     color: #f8fafc !important;
+ }
+
+ body.dark-mode header h1 {
+     color: #ffffff !important;
+ }
+
+ body.dark-mode header .bg-slate-50,
+ body.dark-mode header #zoom-level {
+     background-color: #0f172a !important;
+     color: #f1f5f9 !important;
+ }
+
+ body.dark-mode #canvas {
+     background-color: #0f172a !important;
+     background-image: radial-gradient(#334155 1.5px, transparent 1.5px) !important;
+ }
+
+ body.dark-mode .node {
+     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+ }
+
+ body.dark-mode .shape-terminal {
+     border-color: #34d399 !important;
+     background-color: #064e3b !important;
+     color: #a7f3d0 !important;
+ }
+
+ body.dark-mode .shape-process {
+     border-color: #60a5fa !important;
+     background-color: #1e3a8a !important;
+     color: #bfdbfe !important;
+ }
+
+ body.dark-mode .shape-input {
+     border-color: #f472b6 !important;
+     background-color: #831843 !important;
+     color: #fbcfe8 !important;
+ }
+
+ body.dark-mode .shape-print {
+     border-color: #c084fc !important;
+     background-color: #581c87 !important;
+     color: #e9d5ff !important;
+ }
+
+ body.dark-mode .shape-decision {
+     border-color: #fbbf24 !important;
+     background-color: #78350f !important;
+     color: #fef3c7 !important;
+ }
+
+ body.dark-mode .flow-line {
+     stroke: #94a3b8 !important;
+ }
+
+ body.dark-mode .flow-line:hover {
+     stroke: #60a5fa !important;
+ }
+
+ body.dark-mode .flow-line.selected {
+     stroke: #f87171 !important;
+ }
+
+ body.dark-mode #arrowhead polygon {
+     fill: #94a3b8 !important;
+ }
+
+ body.dark-mode aside button {
+     background-color: #1e293b !important;
+     border-color: #334155 !important;
+     color: #e2e8f0 !important;
+ }
+
+ body.dark-mode aside button:hover {
+     background-color: #334155 !important;
+     border-color: #475569 !important;
+ }
+
+ body.dark-mode aside button .border-emerald-500 {
+     background-color: #064e3b !important;
+ }
+
+ body.dark-mode aside button .border-blue-500 {
+     background-color: #1e3a8a !important;
+ }
+
+ body.dark-mode aside button .border-pink-500 {
+     background-color: #831843 !important;
+ }
+
+ body.dark-mode aside button .border-purple-500 {
+     background-color: #581c87 !important;
+ }
+
+ body.dark-mode aside button svg polygon {
+     fill: #78350f !important;
+     stroke: #fbbf24 !important;
+ }
+
+ body.dark-mode #workspace-tabs-container>div {
+     background-color: #1e293b !important;
+     border-color: #334155 !important;
+     color: #94a3b8 !important;
+ }
+
+ body.dark-mode #workspace-tabs-container>div.bg-white {
+     background-color: #0f172a !important;
+     color: #60a5fa !important;
+     border-top-color: #3b82f6 !important;
+ }
+
+ body.dark-mode #guideline-panel>div,
+ body.dark-mode #custom-prompt-modal>div,
+ body.dark-mode #premium-alert-modal>div {
+     background-color: #1e293b !important;
+     border-color: #334155 !important;
+     color: #cbd5e1 !important;
+ }
+
+ body.dark-mode #guideline-panel h3,
+ body.dark-mode #guideline-panel h4,
+ body.dark-mode #custom-prompt-modal h3,
+ body.dark-mode #premium-alert-modal h3 {
+     color: #ffffff !important;
+ }
+
+ body.dark-mode #guideline-panel .bg-blue-50 {
+     background-color: #1e3a8a/40 !important;
+     border-left-color: #3b82f6 !important;
+     color: #93c5fd !important;
+ }
+
+ body.dark-mode #guideline-panel .bg-blue-50 p {
+     color: #93c5fd !important;
+ }
+
+ body.dark-mode textarea,
+ body.dark-mode select,
+ body.dark-mode input[type="text"] {
+     background-color: #0f172a !important;
+     border-color: #334155 !important;
+     color: #ffffff !important;
+ }
+
+ body.dark-mode textarea:focus,
+ body.dark-mode select:focus,
+ body.dark-mode input[type="text"]:focus {
+     border-color: #3b82f6 !important;
+     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+ }
+
+ body.dark-mode #quick-operators-container button {
+     background-color: #0f172a !important;
+     border-color: #334155 !important;
+     color: #94a3b8 !important;
+ }
+
+ body.dark-mode #quick-operators-container button:hover {
+     background-color: #334155 !important;
+     color: #ffffff !important;
+ }

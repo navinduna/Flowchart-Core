@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowchart Core - Advanced Flowchart Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="flow.css">
+</head>
+
+<body class="flex flex-col h-screen bg-slate-50 text-slate-800">
+
+    <header class="h-14 bg-white border-b flex items-center justify-between px-6 z-50 shadow-sm overflow-x-auto">
+        <div class="flex items-center gap-4 min-w-max">
+            <h1 class="font-bold text-xl text-slate-800 flex items-center gap-2">
+                <i data-lucide="layout-template" class="text-blue-600"></i> Flowchart <span
+                    class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">CORE</span>
+            </h1>
+            <div class="h-6 w-[1px] bg-slate-200"></div>
+            <div class="flex items-center gap-1 text-sm text-slate-500 font-medium bg-slate-50 px-3 py-1 rounded-full">
+                <button onclick="zoomOut()" class="hover:text-blue-600 px-1"><i data-lucide="minus"
+                        class="w-4 h-4"></i></button>
+                <span id="zoom-level" class="w-12 text-center">100%</span>
+                <button onclick="zoomIn()" class="hover:text-blue-600 px-1"><i data-lucide="plus"
+                        class="w-4 h-4"></i></button>
+                <button onclick="resetZoom()" class="hover:text-blue-600 px-1 ml-1 border-l pl-2" title="Reset Zoom"><i
+                        data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 min-w-max">
+            <select id="export-format-selector" onchange="handleMultiExport(this.value); this.value='';"
+                class="px-3 py-1.5 text-sm font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 outline-none cursor-pointer">
+                <option value="" disabled selected>📤 Export Layout</option>
+                <option value="png">Export as PNG</option>
+                <option value="jpeg">Export as JPEG</option>
+                <option value="jpg">Export as JPG</option>
+                <option value="pdf">Export as PDF</option>
+            </select>
+
+            <button onclick="toggleSystemTheme()"
+                class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
+                title="Toggle Light/Dark Mode">
+                <i data-lucide="sun-moon" class="w-5 h-5"></i>
+            </button>
+
+            <button onclick="saveProjectFile()"
+                class="px-3 py-1.5 text-sm font-semibold bg-slate-100 border rounded-lg hover:bg-slate-200 text-slate-700 flex items-center gap-1"><i
+                    data-lucide="save" class="w-4 h-4"></i> Save</button>
+            <button onclick="triggerFileLoad()"
+                class="px-3 py-1.5 text-sm font-semibold bg-slate-100 border rounded-lg hover:bg-slate-200 text-slate-700 flex items-center gap-1"><i
+                    data-lucide="folder-open" class="w-4 h-4"></i> Load</button>
+            <input type="file" id="project-file-input" class="hidden" accept=".fl" onchange="loadProjectFile(event)">
+
+            <div class="h-6 w-[1px] bg-slate-200 mx-1"></div>
+
+            <button onclick="undo()" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
+                title="Undo (Ctrl+Z)"><i data-lucide="undo" class="w-5 h-5"></i></button>
+            <button onclick="redo()"
+                class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 mr-2"
+                title="Redo (Ctrl+Y)"><i data-lucide="redo" class="w-5 h-5"></i></button>
+
+            <button onclick="togglePython()"
+                class="px-4 py-1.5 text-sm font-semibold border rounded-lg hover:bg-slate-50 text-slate-600 flex items-center gap-1"><i
+                    data-lucide="code"></i> View Trace Stack</button>
+            <button id="stop-engine-btn" onclick="stopLogic()"
+                class="hidden px-5 py-1.5 text-sm font-bold bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 items-center gap-1"><i
+                    data-lucide="square" class="w-4 h-4 fill-white"></i> STOP ENGINE</button>
+            <button id="run-engine-btn" onclick="runLogic()"
+                class="px-5 py-1.5 text-sm font-bold bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 flex items-center gap-1"><i
+                    data-lucide="play" class="w-4 h-4 fill-white"></i> RUN ENGINE</button>
+        </div>
+    </header>
+
+    <div class="h-10 bg-slate-100 border-b flex items-center px-4 gap-2 z-40 select-none overflow-x-auto">
+        <div id="workspace-tabs-container" class="flex items-center gap-1 h-full">
+        </div>
+        <button onclick="addNewWorkspaceWindow()"
+            class="p-1 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center font-bold min-w-max"
+            title="Open New Flowchart Window"><i data-lucide="plus" class="w-4 h-4"></i><span class="text-xs ml-0.5">New
+                Window</span></button>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden relative">
+        <aside class="w-64 bg-white border-r p-4 flex flex-col gap-6 z-40 shadow-sm overflow-y-auto hidden md:flex">
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Shapes Library</p>
+                <div class="grid grid-cols-1 gap-3">
+                    <button onclick="addNode('start')"
+                        class="flex items-center gap-3 p-2.5 hover:bg-emerald-50/50 rounded-xl border border-slate-100 hover:border-emerald-200 transition-all group">
+                        <div
+                            class="w-12 h-6 border-2 border-emerald-500 rounded-full bg-emerald-50 group-hover:scale-105 transition-transform">
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700">Start Terminal</span>
+                    </button>
+                    <button onclick="addNode('end')"
+                        class="flex items-center gap-3 p-2.5 hover:bg-red-50/50 rounded-xl border border-slate-100 hover:border-red-200 transition-all group">
+                        <div
+                            class="w-12 h-6 border-2 border-red-500 rounded-full bg-red-50 group-hover:scale-105 transition-transform">
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700">End Terminal</span>
+                    </button>
+                    <button onclick="addNode('process')"
+                        class="flex items-center gap-3 p-2.5 hover:bg-blue-50/50 rounded-xl border border-slate-100 hover:border-blue-200 transition-all group">
+                        <div
+                            class="w-12 h-6 border-2 border-blue-500 bg-blue-50 rounded-md group-hover:scale-105 transition-transform">
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700">Process Block</span>
+                    </button>
+                    <button onclick="addNode('input')"
+                        class="flex items-center gap-3 p-2.5 hover:bg-pink-50/50 rounded-xl border border-slate-100 hover:border-pink-200 transition-all group">
+                        <div
+                            class="w-12 h-6 border-2 border-pink-500 bg-pink-50 -skew-x-12 group-hover:scale-105 transition-transform">
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700">Input Container</span>
+                    </button>
+                    <button onclick="addNode('print')"
+                        class="flex items-center gap-3 p-2.5 hover:bg-purple-50/50 rounded-xl border border-slate-100 hover:border-purple-200 transition-all group">
+                        <div
+                            class="w-12 h-6 border-2 border-purple-500 bg-purple-50 -skew-x-12 group-hover:scale-105 transition-transform">
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700">Print / Display</span>
+                    </button>
+                    <button onclick="addNode('decision')"
+                        class="flex items-center gap-3 p-2.5 hover:bg-amber-50/50 rounded-xl border border-slate-100 hover:border-amber-200 transition-all group">
+                        <div
+                            class="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
+                            <svg viewBox="0 0 100 100" class="w-full h-full">
+                                <polygon points="50,5 95,50 50,95 5,50" fill="#fffbeb" stroke="#f59e0b"
+                                    stroke-width="5" />
+                            </svg>
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700">Decision Block</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-auto border-t pt-4">
+                <button onclick="toggleGuideline(true)"
+                    class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-2 uppercase tracking-wider">
+                    <i data-lucide="book-open" class="w-4 h-4"></i> Read Live Guideline
+                </button>
+            </div>
+        </aside>
+
+        <div
+            class="fixed bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md shadow-xl border rounded-2xl p-2 flex justify-around z-50 md:hidden select-none">
+            <button onclick="addNode('start')"
+                class="p-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold">Start</button>
+            <button onclick="addNode('process')"
+                class="p-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold">Proc</button>
+            <button onclick="addNode('input')"
+                class="p-2 bg-pink-50 text-pink-700 rounded-xl text-xs font-bold">Input</button>
+            <button onclick="addNode('print')"
+                class="p-2 bg-purple-50 text-purple-700 rounded-xl text-xs font-bold">Print</button>
+            <button onclick="addNode('decision')"
+                class="p-2 bg-amber-50 text-amber-700 rounded-xl text-xs font-bold">Decis</button>
+            <button onclick="toggleGuideline(true)" class="p-2 bg-slate-100 rounded-xl"><i data-lucide="book-open"
+                    class="w-4 h-4 text-slate-700"></i></button>
+        </div>
+
+        <div id="canvas-container">
+            <div id="canvas">
+                <svg id="svg-connections" class="absolute inset-0 w-full h-full pointer-events-none"
+                    style="pointer-events: auto !important;">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#475569" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+
+        <div id="editor"
+            class="fixed right-0 top-14 bottom-0 w-80 bg-white border-l shadow-2xl translate-x-full transition-transform z-50 p-6 flex flex-col justify-between">
+            <div class="space-y-4 flex-1 overflow-y-auto">
+                <div class="flex justify-between items-center pb-2 border-b">
+                    <h3 class="font-bold text-lg text-slate-800" id="editor-title">Properties Panel</h3>
+                    <button onclick="closeEditor()" class="p-1 hover:bg-slate-100 rounded"> <i data-lucide="x"
+                            class="w-5 h-5"></i></button>
+                </div>
+
+                <div class="space-y-2 pt-2" id="node-text-container">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">Expression Code / Text
+                        Logic</label>
+                    <textarea id="node-text"
+                        class="w-full h-24 border rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                        placeholder="Enter rule logic..."></textarea>
+                </div>
+
+                <div class="space-y-3 pt-2 hidden" id="node-font-container">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">Font
+                        Customization</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-semibold">Font Family</span>
+                            <select id="node-font-family"
+                                class="w-full border rounded p-1 text-xs font-medium bg-slate-50 outline-none">
+                                <option value="sans-serif">Sans-Serif</option>
+                                <option value="serif">Serif</option>
+                                <option value="monospace">Monospace</option>
+                                <option value="cursive">Cursive</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-semibold">Font Size</span>
+                            <select id="node-font-size"
+                                class="w-full border rounded p-1 text-xs font-medium bg-slate-50 outline-none">
+                                <option value="11px">11px</option>
+                                <option value="13px">13px (Default)</option>
+                                <option value="15px">15px</option>
+                                <option value="18px">18px</option>
+                                <option value="22px">22px</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 hidden" id="node-style-container">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">Shape Custom
+                        Colors</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-semibold">Background</span>
+                            <input type="color" id="node-bg-picker"
+                                class="w-full h-8 border rounded p-0.5 cursor-pointer">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-semibold">Border</span>
+                            <input type="color" id="node-border-picker"
+                                class="w-full h-8 border rounded p-0.5 cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 hidden" id="line-style-container">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">Line Custom
+                        Settings</label>
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-semibold">Line Color</span>
+                        <input type="color" id="line-color-picker"
+                            class="w-full h-8 border rounded p-0.5 cursor-pointer">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-1">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-semibold">Start Port</span>
+                            <select id="line-from-port"
+                                class="w-full border rounded p-1 text-xs font-medium bg-slate-50">
+                                <option value="top">Top</option>
+                                <option value="bottom">Bottom</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-semibold">End Port</span>
+                            <select id="line-to-port" class="w-full border rounded p-1 text-xs font-medium bg-slate-50">
+                                <option value="top">Top</option>
+                                <option value="bottom">Bottom</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 hidden" id="line-dropdown-container">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">Branch Output
+                        (Decision Value)</label>
+                    <select id="line-label-dropdown"
+                        class="w-full border rounded-xl p-2.5 text-sm bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none font-semibold text-slate-700">
+                        <option value="">Standard Connector</option>
+                        <option value="True">True Branch</option>
+                        <option value="False">False Branch</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2" id="quick-operators-container">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">Quick Logic /
+                        Operators</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="addSymbol('+')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-slate-600">+</button>
+                        <button onclick="addSymbol('-')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-slate-600">-</button>
+                        <button onclick="addSymbol('*')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-slate-600">*</button>
+                        <button onclick="addSymbol('/')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-slate-600">/</button>
+                        <button onclick="addSymbol('=')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-blue-600">=</button>
+                        <button onclick="addSymbol('==')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-blue-600">==</button>
+                        <button onclick="addSymbol('!=')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-blue-600">!=</button>
+                        <button onclick="addSymbol('>')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-blue-600">&gt;</button>
+                        <button onclick="addSymbol('<')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-blue-600">&lt;</button>
+                        <button onclick="addSymbol('>=')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-blue-600">&gt;=</button>
+                        <button onclick="addSymbol('<=')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-blue-600">&lt;=</button>
+                        <button onclick="addSymbol('&&')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-emerald-600 col-span-2">AND
+                            (&&)</button>
+                        <button onclick="addSymbol('||')"
+                            class="p-2 border rounded hover:bg-slate-50 text-xs font-mono font-bold text-emerald-600 col-span-2">OR
+                            (||)</button>
+                    </div>
+                </div>
+            </div>
+            <button onclick="deleteSelection()"
+                class="w-full mt-4 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-100 transition-all">Delete
+                Selection</button>
+        </div>
+    </div>
+
+    <div id="guideline-panel"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div
+            class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[85vh]">
+
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="help-circle" class="text-blue-500"></i> Read Guideline (භාවිත කරන්නේ කෙසේද?)
+                </h3>
+                <button onclick="toggleGuideline(false)" class="p-1 hover:bg-slate-100 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-4 my-4 pr-1 text-sm text-slate-600 leading-relaxed font-sans">
+
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg">
+                    <p class="font-bold text-blue-900">වැදගත්:</p>
+                    <p class="text-blue-800 text-xs">මෙම Flowchart Engine එක සජීවීව ක්‍රියාත්මක කළ හැකිය (Live
+                        Evaluation). එබැවින් හැඩතල තුල විධානයන් ලිවීමේදී පහත නීති රීති අනිවාර්යයෙන්ම පිළිපදින්න.</p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 border-b pb-1 text-xs uppercase tracking-wide text-blue-600">1.
+                        Variables (විචල්‍යයන් භාවිතය)</h4>
+                    <p class="mt-1">ඔබට අවශ්‍ය ඕනෑම නමකින් විචල්‍යයක් தනි වචනයෙන් සාදාගත හැක (උදා: <code
+                            class="bg-slate-100 px-1 font-mono text-pink-600">x</code>, <code
+                            class="bg-slate-100 px-1 font-mono text-pink-600">total</code>, <code
+                            class="bg-slate-100 px-1 font-mono text-pink-600">marks</code>). විචල්‍යයන් Case-Sensitive
+                        වේ.</p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 border-b pb-1 text-xs uppercase tracking-wide text-blue-600">2.
+                        Input Box (දත්ත ඇතුළත් කිරීම)</h4>
+                    <ul class="list-disc list-inside mt-1 space-y-1">
+                        <li><b>තනි Input එකක් ගැනීමට:</b> විචල්යයේ නම ලියන්න (උදා: <code
+                                class="font-mono text-slate-700 bg-slate-50 px-1">x</i>).</li>
+                        <li><b>එකවර Input කිහිපයක් ගැනීමට:</b> විචල්යයන් එකිනෙක <b>නව පේළිවල (Enter ඔබා)</b> ලියන්න. 
+                            <br><span class="text-xs text-slate-400 ml-5">උදා: <br><code class="font-mono text-slate-700 bg-slate-50 px-1 ml-5">x : "Enter X"<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;y : "Enter Y"</code></span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 border-b pb-1 text-xs uppercase text-blue-600">Custom Input
+                        Prompts (පරිශීලක ආදාන)</h4>
+                    <p class="mt-1">Input Container එක තුල Variable එක සමඟ ඔබට පෙන්වීමට අවශ්‍ය පණිවිඩය <code
+                            class="bg-slate-100 px-1 font-mono text-pink-600">variable_name : "පණිවිඩය"</code> ලෙස ලබා
+                        දෙන්න. (උදා: <code
+                            class="bg-slate-100 px-1 font-mono text-blue-600">num : "Enter your number"</code>)</p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 border-b pb-1 text-xs uppercase tracking-wide text-blue-600">3.
+                        Process Box (ගණනය කිරීම් සහ අගයන් පැවරීම්)</h4>
+                    <p class="mt-1"><b>ගණනය කිරීම් කිහිපයක් එකවර කිරීමට:</b> විධානයන් එකිනෙක නව පේළිවලින් (Enter ඔබා) හෝ
+                        සෙමිකෝලන ( ; ) මගින් වෙන් කර ලියන්න. <br> උදා: <br><code
+                            class="font-mono text-slate-700 bg-slate-100 px-1 ml-5">x = 10</code><br><code
+                            class="font-mono text-slate-700 bg-slate-100 px-1 ml-5">y = x + 5</code></p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 border-b pb-1 text-xs uppercase tracking-wide text-blue-600">4.
+                        Decision Box (තීරණ ගැනීම / If Condition)</h4>
+                    <p class="mt-1">සංසන්දනය කිරීමට අවශ්‍ය කොන්දේසිය පමණක් ඇතුළත් කරන්න. <code
+                            class="font-mono text-slate-700 bg-slate-100 px-1">==</code>, <code
+                            class="font-mono text-slate-700 bg-slate-100 px-1">&gt;=</code>, <code
+                            class="font-mono text-slate-700 bg-slate-100 px-1">&lt;=</code>, <code
+                            class="font-mono text-slate-700 bg-slate-100 px-1">!=</code> භාවිත කරන්න.</p>
+                    <p class="text-xs text-amber-600 mt-1">⚠️ <b>මතක තබාගන්න:</b> Decision කොටුවෙන් එළියට ඊතල දෙකක්
+                        අඳින්න. ඉන්පසු එම ඊතල (Lines) මත Click කර, එකක් <b>True</b> ලෙසද අනෙක <b>False</b> ලෙසද Node
+                        Properties มගින් නිවැරදිව ලේබල් කරන්න.</p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 border-b pb-1 text-xs uppercase tracking-wide text-blue-600">5.
+                        Print / Display Box (ප්රතිදානයන් පෙන්වීම)</h4>
+                    <ul class="list-disc list-inside mt-1 space-y-2">
+                        <li><b>එකම පේළියක Text සහ විචල්ය පෙන්වීමට:</b> අගයන් කොමාවලින් වෙන්කර ලියන්න (උදා: <code
+                                class="font-mono text-slate-700 bg-slate-50 px-1">"Total is", total</code>).</li>
+                        <li><b>එකවර පේළි කිහිපයක් ප්රින්ට් කිරීමට:</b> ප්රතිදාන විධානයන් <b>Enter ඔබා අලුත් පේළිවල</b>
+                            වෙන වෙනම ලියන්න. <br><span class="text-xs text-slate-400 ml-5">උදා: <br><code
+                                    class="font-mono text-slate-700 bg-slate-50 px-1 ml-5">"X value is", x</code><br><code
+                                    class="font-mono text-slate-700 bg-slate-50 px-1 ml-5">"Y value is", y</code></span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 border-b pb-1 text-xs uppercase tracking-wide text-blue-600">6.
+                        Mobile / Touch Controls (මොබයිල් සහ ස්පර්ශක භාවිතය)</h4>
+                    <p class="mt-1">ජංගම දුරකථන සහ ටැබ්ලට් මගින් භාවිත කරද්දී:</p>
+                    <ul class="list-disc list-inside mt-1 space-y-1 ml-2 text-xs text-slate-700">
+                        <li><b>හැඩතල චලනය කිරීම (Move Shapes):</b> හැඩතලයක් මත ඇඟිල්ල තබා අවශ්‍ය තැනට ඇදගෙන යන්න.</li>
+                        <li><b>ඊතල ඇඳීම (Line Drawing):</b> හැඩතලයේ දාරයක ඇති කුඩා තිතක් (Port) මතින් ස්පර්ශය ආරම්භ කර,
+                            ඇඟිල්ල ඉවතට නොගෙන අනෙක් හැඩතලයේ තිතක් මතට ඇදගෙන ගොස් අතහරින්න.</li>
+                        <li><b>රේඛා වෙනස් කිරීම (Line Adjustments):</b> ඕනෑම ඊතලයක් මත එක පාරක් ස්පර්ශ කිරීමෙන් එහි මැද
+                            හෝ කෙළවර හැඬල් (Blue and White Circles) මතුවන අතර, ඒවා ඇදගෙන යාමෙන් ඊතල ගැලවීම හෝ නැමීම කළ
+                            හැක.</li>
+                        <li><b>Workspace Tabs:</b> Tab එකක් Rename කිරීමට එහි නම මත <b>Double-Tap</b> කරන්න.</li>
+                        <li><b>Properties Panel එක විවෘත කිරීම:</b> මොබයිල් හෝ ටැබ්ලට්වලදී හැඩතලයක් මත එක දිගට
+                            <b>දෙපාරක් ස්පර්ශ (Double-Tap) කරන්න</b>. (පරිගණකයේදී සාමාන්ය පරිදි එක ක්ලික් එකකින් විවෘත
+                            වේ).
+                        </li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 border-b pb-1 text-xs uppercase tracking-wide text-blue-600">7.
+                        Advanced Selection Shortcuts (සමූහ සහ ප්‍රදේශ තෝරාගැනීම්)</h4>
+                    <ul class="list-disc list-inside mt-1 space-y-1 ml-2 text-xs text-slate-700">
+                        <li><b>Shift + Drag Selector Area:</b> Shift කී එක ඔබාගෙන Canvas එකෙහි හිස් තැනක සිට මවුසය ඇදගෙන
+                            යාමෙන් (Marquee Area Box) එකවර හැඩතල කිහිපයක් එකට තෝරාගත හැක.</li>
+                        <li><b>Shift + Click Selection Additive:</b> Shift කී එක ඔබාගෙන හැඩතල මත ක්ලික් කිරීමෙන් පවතින
+                            සමූහයට නව හැඩතල එකින් එක එක්කර ගැනීමට හෝ ඉවත් කිරීමට හැකිය.</li>
+                        <li><b>Group Dragging:</b> එකවර හැඩතල කිහිපයක් තෝරාගෙන ඇති විට, ඕනෑම එකක් මවුසයෙන් ඇදගෙන යාමෙන්
+                            මුළු සමූහයම එකවර Lecture කර චලනය කළ හැකිය.</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="border-t pt-3 flex justify-end">
+                <button onclick="toggleGuideline(false)"
+                    class="px-5 py-2 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition-all">
+                    I Understand
+                </button>
+            </div>
+
+        </div>
+    </div>
+    <div id="custom-prompt-modal"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4 select-none">
+        <div
+            class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4 transform transition-all duration-200">
+            <div class="flex items-center gap-3 border-b pb-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm">
+                    <i id="custom-prompt-icon" data-lucide="help-circle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-base text-slate-800">Action Required</h3>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">StitchFlow System Engine
+                    </p>
+                </div>
+            </div>
+            <div class="space-y-2">
+                <label id="custom-prompt-label"
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wide"></label>
+                <input type="text" id="custom-prompt-input"
+                    class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-semibold text-slate-700 shadow-sm transition-all bg-slate-50 focus:bg-white"
+                    autocomplete="off">
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button id="custom-prompt-cancel"
+                    class="px-4 py-2 text-xs font-bold bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all uppercase tracking-wider">Cancel</button>
+                <button id="custom-prompt-submit"
+                    class="px-5 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl shadow-md hover:bg-blue-700 transition-all uppercase tracking-wider">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="premium-alert-modal"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4 select-none">
+        <div
+            class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4 transform transition-all duration-200 scale-95 opacity-0 animate-fade-in">
+            <div class="flex items-center gap-3 border-b pb-3">
+                <div id="premium-alert-icon-container"
+                    class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm">
+                    <i id="premium-alert-icon" data-lucide="bell" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 id="premium-alert-title" class="font-bold text-base text-slate-800">System Notification</h3>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Engine Process Registry</p>
+                </div>
+            </div>
+            <div class="py-2">
+                <p id="premium-alert-message" class="text-sm font-medium text-slate-600 leading-relaxed"></p>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button id="premium-alert-cancel"
+                    class="hidden px-4 py-2 text-xs font-bold bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all uppercase tracking-wider">No,
+                    Cancel</button>
+                <button id="premium-alert-submit"
+                    class="px-5 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl shadow-md hover:bg-blue-700 transition-all uppercase tracking-wider">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bottom-panel"
+        class="h-60 bg-slate-900 text-white border-t hidden flex flex-col transition-all overflow-hidden font-mono text-sm z-40 shadow-inner">
+        <div class="bg-slate-950 px-4 py-2 flex items-center justify-between border-b border-slate-800">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><i
+                    data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i> StitchFlow Hybrid Engine Workspace
+                Panel</span>
+            <button onclick="document.getElementById('bottom-panel').classList.add('hidden')"
+                class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        <div class="flex-1 flex divide-x divide-slate-800 overflow-hidden">
+            <div class="w-1/2 flex flex-col h-full bg-slate-900">
+                <div
+                    class="bg-slate-950/60 px-4 py-1 text-xs font-bold text-amber-400 border-b border-slate-800/60 flex items-center gap-1">
+                    <i data-lucide="monitor" class="w-3.5 h-3.5"></i> 💻 PROGRAM OUTPUT (ප්‍රතිදානයන්)
+                </div>
+                <div id="program-output-view"
+                    class="flex-1 p-4 overflow-y-auto space-y-1.5 text-yellow-100 font-semibold selection:bg-yellow-500/30">
+                </div>
+            </div>
+
+            <div class="w-1/2 flex flex-col h-full bg-slate-900">
+                <div
+                    class="bg-slate-950/60 px-4 py-1 text-xs font-bold text-blue-400 border-b border-slate-800/60 flex items-center gap-1">
+                    <i data-lucide="cpu" class="w-3.5 h-3.5"></i> ⚙️ CORE EXECUTION TRACE LOG (ක්‍රියාදාමය)
+                </div>
+                <div id="trace-log-view"
+                    class="flex-1 p-4 overflow-y-auto space-y-1 text-slate-400 text-xs selection:bg-blue-500/30"></div>
+            </div>
+        </div>
+        <div id="python-output"
+            class="hidden text-slate-500 bg-slate-950 px-4 py-1 text-[11px] border-t border-slate-800/50 whitespace-pre overflow-x-auto">
+        </div>
+    </div>
+
+    <script src="flow.js"></script>
+</body>
+
+</html>
